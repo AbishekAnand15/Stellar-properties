@@ -3,126 +3,136 @@
 This project explores the application of predictive modeling techniques to analyze stellar properties, with an emphasis on extending the scope to include Star Age Estimation and Exoplanet Potential evaluation. The study integrates advanced data science methodologies, leveraging classification and regression algorithms to predict spectral types, assess stellar collapse fates, and estimate stellar ages. It also incorporates exoplanetary potential indicators to evaluate the likelihood of planetary systems associated with stars.
 ### Code
 ```py
+import pandas as pd
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
 
-def classify_spectral_type(temp):
-    """Classify spectral type based on temperature."""
-    if temp > 30000:
-        return "O"
-    elif 10000 <= temp <= 30000:
-        return "B"
-    elif 7500 <= temp < 10000:
-        return "A"
-    elif 6000 <= temp < 7500:
-        return "F"
-    elif 5200 <= temp < 6000:
-        return "G"
-    elif 3700 <= temp < 5200:
-        return "K"
-    else:
-        return "M"
+# Load the dataset
+df = pd.read_excel("/content/updated_star_data_with_age.xlsx")
 
-def predict_collapse_fate(mass):
-    """Predict the collapse fate of a star based on mass."""
-    if mass < 1.44:
-        return "White Dwarf"
-    elif 1.44 <= mass <= 2.5:
-        return "Neutron Star"
-    else:
-        return "Black Hole"
+# Drop rows with missing values
+df = df.dropna()
 
-def estimate_age(mass):
-    """Estimate the age of the star based on its mass."""
-    if mass <= 0.5:
-        return 13.8
-    elif 0.5 < mass <= 1.0:
-        return 10
-    elif 1.0 < mass <= 3.0:
-        return 1
-    else:
-        return 0.1
+# Encode categorical variables
+label_encoder_spectral = LabelEncoder()
+df['Star Spectral Type'] = label_encoder_spectral.fit_transform(df['Star Spectral Type'])
+spectral_classes = label_encoder_spectral.classes_  # Save the spectral types for inverse mapping
 
-def exoplanet_potential(luminosity):
-    """Estimate the exoplanet potential based on luminosity."""
-    habitable_zone_min = (luminosity ** 0.5) * 0.95
-    habitable_zone_max = (luminosity ** 0.5) * 1.37
-    
-    if habitable_zone_min < 0.1:
-        return "No Potential"
-    elif habitable_zone_max > 1.5:
-        return "Possible Habitable Zone"
-    else:
-        return "Likely Habitable Zone"
+label_encoder_fate = LabelEncoder()
+df['Evolutionary Fate'] = label_encoder_fate.fit_transform(df['Evolutionary Fate'])
+fate_classes = label_encoder_fate.classes_  # Save the evolutionary fate classes for inverse mapping
 
-def simulate_data():
-    """Simulate some data for testing (true labels and predictions)."""
-    # Simulated true values and predicted values for spectral type and collapse fate
-    true_spectral_types = ['O', 'B', 'A', 'F', 'G', 'K', 'M']
-    predicted_spectral_types = ['O', 'B', 'A', 'F', 'G', 'K', 'K']  # Simulate slight errors
+# Define features and targets for different tasks
+features = ['Temperature (K)', 'Radius (Solar Radii)', 'Metallicity [Fe/H]', 'Luminosity (Solar Units)', 'Mass (Solar Masses)']
 
-    true_fates = ['White Dwarf', 'Neutron Star', 'Black Hole', 'White Dwarf', 'Neutron Star']
-    predicted_fates = ['White Dwarf', 'Neutron Star', 'Black Hole', 'White Dwarf', 'Black Hole']  # Simulate errors
+# Task-specific targets
+target_spectral_type = 'Star Spectral Type'
+target_age = 'Age (Gyr)'  # Assuming 'Age' column exists
+target_evolutionary_fate = 'Evolutionary Fate'
+target_exoplanet = 'Exoplanet Host Prediction'
 
-    return true_spectral_types, predicted_spectral_types, true_fates, predicted_fates
+# Standardize the features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df[features])
 
-def calculate_metrics(true_values, predicted_values):
-    """Calculate accuracy, precision, and confusion matrix."""
-    accuracy = accuracy_score(true_values, predicted_values)
-    precision = precision_score(true_values, predicted_values, average='weighted', zero_division=0)
-    conf_matrix = confusion_matrix(true_values, predicted_values)
+# Train-test split for different tasks
+X_train, X_test, y_train_class, y_test_class = train_test_split(X_scaled, df[target_spectral_type], test_size=0.2, random_state=42)
+X_train_age, X_test_age, y_train_age, y_test_age = train_test_split(X_scaled, df[target_age], test_size=0.2, random_state=42)
+X_train_fate, X_test_fate, y_train_fate, y_test_fate = train_test_split(X_scaled, df[target_evolutionary_fate], test_size=0.2, random_state=42)
+X_train_exoplanet, X_test_exoplanet, y_train_exoplanet, y_test_exoplanet = train_test_split(X_scaled, df[target_exoplanet], test_size=0.2, random_state=42)
+```
+# --- Neural Network for Spectral Type Classification ---
+model_class = Sequential([
+    Dense(128, activation='relu', input_shape=(X_train.shape[1],)),
+    Dropout(0.3),
+    Dense(64, activation='relu'),
+    Dense(len(np.unique(y_train_class)), activation='softmax')
+])
 
-    return accuracy, precision, conf_matrix
+model_class.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model_class.fit(X_train, y_train_class, epochs=50, batch_size=16, verbose=1, validation_split=0.2)
 
-# User Input Section
-print("Enter the stellar parameters for a star:")
+# --- Neural Network for Stellar Age Prediction ---
+model_age = Sequential([
+    Dense(128, activation='relu', input_shape=(X_train_age.shape[1],)),
+    Dropout(0.3),
+    Dense(64, activation='relu'),
+    Dense(1)  # Regression output layer
+])
 
-# Gather inputs for the star
-mass = float(input("Mass (in solar masses): "))
-radius = float(input("Radius (in solar radii): "))
-temperature = float(input("Temperature (in Kelvin): "))
-luminosity = float(input("Luminosity (in solar luminosities): "))
-metallicity = float(input("Metallicity (relative to the Sun): "))
+model_age.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
+model_age.fit(X_train_age, y_train_age, epochs=50, batch_size=16, verbose=1, validation_split=0.2)
 
-# Determine derived attributes
-spectral_type = classify_spectral_type(temperature)
-collapse_fate = predict_collapse_fate(mass)
-age = estimate_age(mass)
-exoplanet_potential_status = exoplanet_potential(luminosity)
+# --- Neural Network for Evolutionary Fate Classification ---
+model_fate = Sequential([
+    Dense(128, activation='relu', input_shape=(X_train_fate.shape[1],)),
+    Dropout(0.3),
+    Dense(64, activation='relu'),
+    Dense(len(np.unique(y_train_fate)), activation='softmax')
+])
 
-# Simulate some data for classification metrics
-true_spectral_types, predicted_spectral_types, true_fates, predicted_fates = simulate_data()
+model_fate.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model_fate.fit(X_train_fate, y_train_fate, epochs=50, batch_size=16, verbose=1, validation_split=0.2)
 
-# Calculate metrics for Spectral Type
-accuracy_spectral, precision_spectral, conf_matrix_spectral = calculate_metrics(true_spectral_types, predicted_spectral_types)
+# --- Neural Network for Exoplanet Potential Classification ---
+model_exoplanet = Sequential([
+    Dense(128, activation='relu', input_shape=(X_train_exoplanet.shape[1],)),
+    Dropout(0.3),
+    Dense(64, activation='relu'),
+    Dense(1, activation='sigmoid')  # Binary classification output layer
+])
 
-# Calculate metrics for Collapse Fate
-accuracy_fate, precision_fate, conf_matrix_fate = calculate_metrics(true_fates, predicted_fates)
+model_exoplanet.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model_exoplanet.fit(X_train_exoplanet, y_train_exoplanet, epochs=50, batch_size=16, verbose=1, validation_split=0.2)
 
-# Display results
-print("\n--- Stellar Properties ---")
-print(f"Mass: {mass} Solar Masses")
-print(f"Radius: {radius} Solar Radii")
-print(f"Temperature: {temperature} K")
-print(f"Luminosity: {luminosity} Solar Luminosities")
-print(f"Metallicity: {metallicity} (relative to the Sun)")
+# --- Input for predicting new star data ---
+def predict_new_star_data():
+    # Prompt user for input data dynamically
+    temperature = float(input("Enter the star's Temperature (K): "))
+    radius = float(input("Enter the star's Radius (in Solar Radii): "))
+    metallicity = float(input("Enter the star's Metallicity [Fe/H]: "))
+    luminosity = float(input("Enter the star's Luminosity (in Solar Units): "))
+    mass = float(input("Enter the star's Mass (in Solar Masses): "))
 
-print("\n--- Derived Attributes ---")
-print(f"Spectral Type: {spectral_type}")
-print(f"Collapse Fate: {collapse_fate}")
-print(f"Star Age Estimate: {age} Billion Years")
-print(f"Exoplanet Potential: {exoplanet_potential_status}")
+    # Prepare new data for prediction
+    new_data = [temperature, radius, metallicity, luminosity, mass]
 
-print("\n--- Classification Metrics ---")
-print(f"Spectral Type Accuracy: {accuracy_spectral:.2f}")
-print(f"Spectral Type Precision: {precision_spectral:.2f}")
-print(f"Spectral Type Confusion Matrix:\n{conf_matrix_spectral}")
-print(f"Collapse Fate Accuracy: {accuracy_fate:.2f}")
-print(f"Collapse Fate Precision: {precision_fate:.2f}")
-print(f"Collapse Fate Confusion Matrix:\n{conf_matrix_fate}")
+    # Standardize the input data using the same scaler
+    new_data_scaled = scaler.transform([new_data])
+
+    # Spectral Type Prediction
+    spectral_type_prob = model_class.predict(new_data_scaled)
+    spectral_type_pred = np.argmax(spectral_type_prob)  # Get the predicted class index
+    spectral_type = spectral_classes[spectral_type_pred]  # Map class index back to label
+
+    # Stellar Age Prediction
+    predicted_age = model_age.predict(new_data_scaled)
+    predicted_age_value = predicted_age.item()  # Access the scalar value of age
+
+    # Evolutionary Fate Prediction
+    fate_prob = model_fate.predict(new_data_scaled)
+    fate_pred = np.argmax(fate_prob)  # Get the predicted class index for evolutionary fate
+    evolutionary_fate = fate_classes[fate_pred]  # Map class index back to label
+
+    # Exoplanet Potential Prediction
+    exoplanet_prob = model_exoplanet.predict(new_data_scaled)
+    exoplanet_potential = (exoplanet_prob > 0.5).astype("int32")  # Convert to binary classification
+
+    # Output predictions
+    print(f"\nPredicted Spectral Type: {spectral_type}")  # 'G', 'F', etc.
+    print(f"Predicted Stellar Age: {predicted_age_value:.2f} Gyr")  # Age in billion years
+    print(f"Predicted Evolutionary Fate: {evolutionary_fate}")  # 'White Dwarf', 'Neutron Star', etc.
+    print(f"Exoplanet Potential: {'Yes' if exoplanet_potential == 1 else 'No'}")
+
+# Run the function to predict new star data
+predict_new_star_data()
 
 ```
 ### Output
-![Screenshot 2024-11-16 183755](https://github.com/user-attachments/assets/ab6ea003-9677-418d-b5b6-72a577598369)
+![image](https://github.com/user-attachments/assets/9d061f09-a267-4a92-8ac1-6d5705f5b422)
+
 
 
