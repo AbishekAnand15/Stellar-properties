@@ -43,9 +43,7 @@ X_train, X_test, y_train_class, y_test_class = train_test_split(X_scaled, df[tar
 X_train_age, X_test_age, y_train_age, y_test_age = train_test_split(X_scaled, df[target_age], test_size=0.2, random_state=42)
 X_train_fate, X_test_fate, y_train_fate, y_test_fate = train_test_split(X_scaled, df[target_evolutionary_fate], test_size=0.2, random_state=42)
 X_train_exoplanet, X_test_exoplanet, y_train_exoplanet, y_test_exoplanet = train_test_split(X_scaled, df[target_exoplanet], test_size=0.2, random_state=42)
-```
-# --- Neural Network for Spectral Type Classification ---
-model_class = Sequential([
+```model_class = Sequential([
     Dense(128, activation='relu', input_shape=(X_train.shape[1],)),
     Dropout(0.3),
     Dense(64, activation='relu'),
@@ -55,7 +53,6 @@ model_class = Sequential([
 model_class.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 model_class.fit(X_train, y_train_class, epochs=50, batch_size=16, verbose=1, validation_split=0.2)
 
-# --- Neural Network for Stellar Age Prediction ---
 model_age = Sequential([
     Dense(128, activation='relu', input_shape=(X_train_age.shape[1],)),
     Dropout(0.3),
@@ -66,7 +63,6 @@ model_age = Sequential([
 model_age.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
 model_age.fit(X_train_age, y_train_age, epochs=50, batch_size=16, verbose=1, validation_split=0.2)
 
-# --- Neural Network for Evolutionary Fate Classification ---
 model_fate = Sequential([
     Dense(128, activation='relu', input_shape=(X_train_fate.shape[1],)),
     Dropout(0.3),
@@ -77,7 +73,6 @@ model_fate = Sequential([
 model_fate.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 model_fate.fit(X_train_fate, y_train_fate, epochs=50, batch_size=16, verbose=1, validation_split=0.2)
 
-# --- Neural Network for Exoplanet Potential Classification ---
 model_exoplanet = Sequential([
     Dense(128, activation='relu', input_shape=(X_train_exoplanet.shape[1],)),
     Dropout(0.3),
@@ -88,7 +83,6 @@ model_exoplanet = Sequential([
 model_exoplanet.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 model_exoplanet.fit(X_train_exoplanet, y_train_exoplanet, epochs=50, batch_size=16, verbose=1, validation_split=0.2)
 
-# --- Input for predicting new star data ---
 def predict_new_star_data():
     # Prompt user for input data dynamically
     temperature = float(input("Enter the star's Temperature (K): "))
@@ -127,7 +121,7 @@ def predict_new_star_data():
     print(f"Predicted Evolutionary Fate: {evolutionary_fate}")  # 'White Dwarf', 'Neutron Star', etc.
     print(f"Exoplanet Potential: {'Yes' if exoplanet_potential == 1 else 'No'}")
 
-# Run the function to predict new star data
+
 predict_new_star_data()
 
 ```
